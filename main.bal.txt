@@ -1,0 +1,59 @@
+import ballerinax/kafka;
+import ballerina/log;
+import ballerinax/mongodb;
+
+mongodb:ConnectionConfig mongoConfig = {
+    connection: {
+        host: "localhost",
+        port: 27017,
+        auth: {
+            username: "lorraine",
+            password: "1234"
+        },
+        options: {
+            sslEnabled: false,
+            serverSelectionTimeout: 5000
+        }
+    },
+    databaseName: "progressManagementSystem"
+};
+
+mongodb:Client mongoClient = check new (mongoConfig);
+string Users = "User";
+type User record {
+    string userId;
+    string firstName;
+    string lastName;
+    string jobTitle;
+    String Position;
+    String Role;
+};
+
+listener kafka:Listener UserListener = new (kafka:DEFAULT_URL, {
+    groupId: "department-group-id",
+    topics: [
+        "Department"
+    ]
+});
+
+service on UserListener {
+
+    remote function onfciRecord(User[] Users) returns error? {
+        
+        from User 'User in Users
+        where 'User.isValid
+        do {
+            log:printInfo(string `Received valid User for ${'User.firstName}`);
+            map<json> doc = <map<json>>'order.toJson();
+            check mongoClient->insert(doc, orderCollection);
+        };
+
+        // foreach User 'User in Users {
+        //     if 'User.isValid {
+        //         log:printInfo(string `Received valid User for ${'User.firstName}`);
+        //         map<json> doc = <map<json>>'User.toJson();
+        //         check mongoClient->insert(doc, User);
+        //     }
+        // }
+    }
+}
